@@ -31,12 +31,8 @@ jobs:
           # Expose to subsequent steps
           REVIEWER_ID=$(echo "$TODAY" | jq -r .slack_id)
           REVIEWER_NAME=$(echo "$TODAY" | jq -r .name)
-          # Wrap in <@...> so Slack renders a real @-mention when the workflow
-          # substitutes the variable into a message body.
-          REVIEWER_MENTION="<@${REVIEWER_ID}>"
           echo "reviewer_id=${REVIEWER_ID}" >> "$GITHUB_OUTPUT"
           echo "reviewer_name=${REVIEWER_NAME}" >> "$GITHUB_OUTPUT"
-          echo "reviewer_mention=${REVIEWER_MENTION}" >> "$GITHUB_OUTPUT"
 
       - name: Commit if changed
         run: |
@@ -54,22 +50,17 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           REVIEWER_ID: ${{ steps.compute.outputs.reviewer_id }}
           REVIEWER_NAME: ${{ steps.compute.outputs.reviewer_name }}
-          REVIEWER_MENTION: ${{ steps.compute.outputs.reviewer_mention }}
         run: |
           set -euo pipefail
           if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
             echo "SLACK_WEBHOOK_URL not set — skipping Slack notify."
             exit 0
           fi
-          # WfB renders real @-mentions ONLY via Person/Slack-User typed
-          # variables — NOT via <@U_ID> in text. So we send the bare ID in
-          # `reviewer_user` (Person type in the WfB schema) plus the rest
-          # of the message in `text`. WfB body is `{{reviewer_user}} {{text}}`.
-          MESSAGE=":sunny: you're today's :plus1: reviewer (:game_die:)! Folks ping you for PRs today."
-          PAYLOAD=$(jq -n \
-            --arg text "$MESSAGE" \
-            --arg reviewer_user "$REVIEWER_ID" \
-            '{ text: $text, reviewer_user: $reviewer_user }')
+          # The WfB workflow holds the entire message body as a static string
+          # with `{{reviewer_user}}` embedded inline. The Slack-User-ID variable
+          # type is what makes the @-mention render as a real ping; text-typed
+          # variables get HTML-escaped and don't notify.
+          PAYLOAD=$(jq -n --arg reviewer_user "$REVIEWER_ID" '{ reviewer_user: $reviewer_user }')
           echo "Posting payload for reviewer: $REVIEWER_NAME"
           HTTP_CODE=$(curl -s -o /tmp/slack_response.txt -w "%{http_code}" \
             -X POST \
