@@ -61,10 +61,12 @@ jobs:
             echo "SLACK_WEBHOOK_URL not set — skipping Slack notify."
             exit 0
           fi
-          PAYLOAD=$(jq -n \
-            --arg reviewer_id "$REVIEWER_MENTION" \
-            --arg reviewer_name "$REVIEWER_NAME" \
-            '{ reviewer_id: $reviewer_id, reviewer_name: $reviewer_name }')
+          # Single `text` field is the morning-digest pattern: WfB renders
+          # `<@U...>` as a real @-mention only when the variable is the ENTIRE
+          # message body (i.e. the body in WfB is just `{{text}}`). Variables
+          # interpolated inside other text get HTML-escaped.
+          MESSAGE=":sunny: Today's :plus1: reviewer is... :dice-roll: ${REVIEWER_MENTION}! Please ping them for +1's today."
+          PAYLOAD=$(jq -n --arg text "$MESSAGE" '{ text: $text }')
           echo "Posting payload for reviewer: $REVIEWER_NAME"
           HTTP_CODE=$(curl -s -o /tmp/slack_response.txt -w "%{http_code}" \
             -X POST \
