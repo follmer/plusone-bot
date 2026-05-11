@@ -2,7 +2,10 @@ name: Daily +1 Reviewer Rotation
 
 on:
   schedule:
-    - cron: "0 14 * * 1-5"
+    # Fire at both 13:00 and 14:00 UTC Mon-Fri so we cover 9am Eastern
+    # year-round (13:00 UTC = 9am EDT, 14:00 UTC = 9am EST). The guard step
+    # below skips whichever fire is NOT actually 9am in America/New_York.
+    - cron: "0 13,14 * * 1-5"
   workflow_dispatch: {}
 
 permissions:
@@ -14,7 +17,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Should we run? (skip off-hour cron fires)
+        id: should_run
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          ET_HOUR=$(TZ=America/New_York date +%H)
+          if [ "$ET_HOUR" = "09" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Off-hour fire ($ET_HOUR ET); skipping downstream steps."
+          fi
+
       - name: Compute today's +1
+        if: steps.should_run.outputs.run == 'true'
         id: compute
         run: |
           set -euo pipefail
@@ -35,6 +53,7 @@ jobs:
           echo "reviewer_name=${REVIEWER_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Commit if changed
+        if: steps.should_run.outputs.run == 'true'
         run: |
           if git diff --quiet data/today.json; then
             echo "No change."; exit 0
@@ -46,6 +65,7 @@ jobs:
           git push
 
       - name: Post to Slack via webhook
+        if: steps.should_run.outputs.run == 'true'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           REVIEWER_ID: ${{ steps.compute.outputs.reviewer_id }}
