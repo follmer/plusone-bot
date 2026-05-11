@@ -31,8 +31,12 @@ jobs:
           # Expose to subsequent steps
           REVIEWER_ID=$(echo "$TODAY" | jq -r .slack_id)
           REVIEWER_NAME=$(echo "$TODAY" | jq -r .name)
+          # Wrap in <@...> so Slack renders a real @-mention when the workflow
+          # substitutes the variable into a message body.
+          REVIEWER_MENTION="<@${REVIEWER_ID}>"
           echo "reviewer_id=${REVIEWER_ID}" >> "$GITHUB_OUTPUT"
           echo "reviewer_name=${REVIEWER_NAME}" >> "$GITHUB_OUTPUT"
+          echo "reviewer_mention=${REVIEWER_MENTION}" >> "$GITHUB_OUTPUT"
 
       - name: Commit if changed
         run: |
@@ -50,6 +54,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           REVIEWER_ID: ${{ steps.compute.outputs.reviewer_id }}
           REVIEWER_NAME: ${{ steps.compute.outputs.reviewer_name }}
+          REVIEWER_MENTION: ${{ steps.compute.outputs.reviewer_mention }}
         run: |
           set -euo pipefail
           if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
@@ -57,7 +62,7 @@ jobs:
             exit 0
           fi
           PAYLOAD=$(jq -n \
-            --arg reviewer_id "$REVIEWER_ID" \
+            --arg reviewer_id "$REVIEWER_MENTION" \
             --arg reviewer_name "$REVIEWER_NAME" \
             '{ reviewer_id: $reviewer_id, reviewer_name: $reviewer_name }')
           echo "Posting payload for reviewer: $REVIEWER_NAME"
