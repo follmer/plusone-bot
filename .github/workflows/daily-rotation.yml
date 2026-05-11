@@ -1,0 +1,39 @@
+name: Daily +1 Reviewer Rotation
+
+on:
+  schedule:
+    - cron: "0 11 * * 1-5"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  rotate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute today's +1
+        run: |
+          set -euo pipefail
+          REVIEWERS_JSON=$(cat data/reviewers.json)
+          N=$(echo "$REVIEWERS_JSON" | jq 'length')
+          EPOCH_DAYS=$(( ( $(date -u +%s) - $(date -u -d '2026-01-01' +%s) ) / 86400 ))
+          TODAY_IDX=$(( EPOCH_DAYS % N ))
+          TODAY=$(echo "$REVIEWERS_JSON" | jq ".[${TODAY_IDX}]")
+          NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          jq -n --argjson today "$TODAY" --arg now "$NOW" \
+            '{ today: $today, computed_at: $now }' > data/today.json
+          cat data/today.json
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet data/today.json; then
+            echo "No change."; exit 0
+          fi
+          git config user.name "plusone-bot"
+          git config user.email "plusone-bot@users.noreply.github.com"
+          git add data/today.json
+          git commit -m "rotate: $(jq -r .today.name data/today.json)"
+          git push
