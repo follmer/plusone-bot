@@ -1,4 +1,8 @@
 {
-  "today": { "index": 0, "name": "Kyle Follmer", "slack_id": "TBD" },
-  "computed_at": "1970-01-01T00:00:00Z"
+  "today": {
+    "index": 4,
+    "name": "Anraj Jeji",
+    "slack_id": "TBD"
+  },
+  "computed_at": "2026-05-11T21:18:35Z"
 }
