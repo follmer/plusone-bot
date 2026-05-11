@@ -61,13 +61,15 @@ jobs:
             echo "SLACK_WEBHOOK_URL not set — skipping Slack notify."
             exit 0
           fi
-          # WfB HTML-escapes <@U_ID> in text-typed variables, so we use a
-          # lowercase-first-name `@adam` / `@nehal` style instead. Looks like
-          # a mention; doesn't actually ping but the morning post is visible
-          # to the whole channel anyway.
-          FIRST_NAME=$(echo "$REVIEWER_NAME" | awk '{print tolower($1)}')
-          MESSAGE=":sunny: Today's :plus1: reviewer is... :game_die: @${FIRST_NAME}! Please ping them for +1's today."
-          PAYLOAD=$(jq -n --arg text "$MESSAGE" '{ text: $text }')
+          # WfB renders real @-mentions ONLY via Person/Slack-User typed
+          # variables — NOT via <@U_ID> in text. So we send the bare ID in
+          # `reviewer_user` (Person type in the WfB schema) plus the rest
+          # of the message in `text`. WfB body is `{{reviewer_user}} {{text}}`.
+          MESSAGE=":sunny: you're today's :plus1: reviewer (:game_die:)! Folks ping you for PRs today."
+          PAYLOAD=$(jq -n \
+            --arg text "$MESSAGE" \
+            --arg reviewer_user "$REVIEWER_ID" \
+            '{ text: $text, reviewer_user: $reviewer_user }')
           echo "Posting payload for reviewer: $REVIEWER_NAME"
           HTTP_CODE=$(curl -s -o /tmp/slack_response.txt -w "%{http_code}" \
             -X POST \
