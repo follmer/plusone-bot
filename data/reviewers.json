@@ -1,8 +1,8 @@
 [
-  { "index": 0, "name": "Kyle Follmer",   "slack_id": "TBD" },
-  { "index": 1, "name": "Peter Lewyckyj", "slack_id": "TBD" },
-  { "index": 2, "name": "Nehal Azzab",    "slack_id": "TBD" },
-  { "index": 3, "name": "Adam Derwicki",  "slack_id": "TBD" },
-  { "index": 4, "name": "Anraj Jeji",     "slack_id": "TBD" },
-  { "index": 5, "name": "Lukas Skrabak",  "slack_id": "TBD" }
+  { "index": 0, "name": "Kyle Follmer",   "slack_id": "U0713ATJVT8" },
+  { "index": 1, "name": "Peter Lewyckyj", "slack_id": "W0199SF38FQ" },
+  { "index": 2, "name": "Nehal Azzab",    "slack_id": "W01830P5L3H" },
+  { "index": 3, "name": "Adam Derwicki",  "slack_id": "U06NMSPR6LB" },
+  { "index": 4, "name": "Anraj Jeji",     "slack_id": "U099ZA5D0TF" },
+  { "index": 5, "name": "Lukas Skrabak",  "slack_id": "W018GBX2G2Z" }
 ]
