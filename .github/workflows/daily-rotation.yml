@@ -61,11 +61,12 @@ jobs:
             echo "SLACK_WEBHOOK_URL not set — skipping Slack notify."
             exit 0
           fi
-          # Single `text` field is the morning-digest pattern: WfB renders
-          # `<@U...>` as a real @-mention only when the variable is the ENTIRE
-          # message body (i.e. the body in WfB is just `{{text}}`). Variables
-          # interpolated inside other text get HTML-escaped.
-          MESSAGE=":sunny: Today's :plus1: reviewer is... :dice-roll: ${REVIEWER_MENTION}! Please ping them for +1's today."
+          # WfB HTML-escapes <@U_ID> in text-typed variables, so we use a
+          # lowercase-first-name `@adam` / `@nehal` style instead. Looks like
+          # a mention; doesn't actually ping but the morning post is visible
+          # to the whole channel anyway.
+          FIRST_NAME=$(echo "$REVIEWER_NAME" | awk '{print tolower($1)}')
+          MESSAGE=":sunny: Today's :plus1: reviewer is... :game_die: @${FIRST_NAME}! Please ping them for +1's today."
           PAYLOAD=$(jq -n --arg text "$MESSAGE" '{ text: $text }')
           echo "Posting payload for reviewer: $REVIEWER_NAME"
           HTTP_CODE=$(curl -s -o /tmp/slack_response.txt -w "%{http_code}" \
