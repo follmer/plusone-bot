@@ -15,6 +15,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Compute today's +1
+        id: compute
         run: |
           set -euo pipefail
           REVIEWERS_JSON=$(cat data/reviewers.json)
@@ -27,6 +28,12 @@ jobs:
             '{ today: $today, computed_at: $now }' > data/today.json
           cat data/today.json
 
+          # Expose to subsequent steps
+          REVIEWER_ID=$(echo "$TODAY" | jq -r .slack_id)
+          REVIEWER_NAME=$(echo "$TODAY" | jq -r .name)
+          echo "reviewer_id=${REVIEWER_ID}" >> "$GITHUB_OUTPUT"
+          echo "reviewer_name=${REVIEWER_NAME}" >> "$GITHUB_OUTPUT"
+
       - name: Commit if changed
         run: |
           if git diff --quiet data/today.json; then
@@ -37,3 +44,34 @@ jobs:
           git add data/today.json
           git commit -m "rotate: $(jq -r .today.name data/today.json)"
           git push
+
+      - name: Post to Slack via webhook
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          REVIEWER_ID: ${{ steps.compute.outputs.reviewer_id }}
+          REVIEWER_NAME: ${{ steps.compute.outputs.reviewer_name }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
+            echo "SLACK_WEBHOOK_URL not set — skipping Slack notify."
+            exit 0
+          fi
+          PAYLOAD=$(jq -n \
+            --arg reviewer_id "$REVIEWER_ID" \
+            --arg reviewer_name "$REVIEWER_NAME" \
+            '{ reviewer_id: $reviewer_id, reviewer_name: $reviewer_name }')
+          echo "Posting payload for reviewer: $REVIEWER_NAME"
+          HTTP_CODE=$(curl -s -o /tmp/slack_response.txt -w "%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$SLACK_WEBHOOK_URL")
+          echo "Slack HTTP status: $HTTP_CODE"
+          if [ -s /tmp/slack_response.txt ]; then
+            echo "Response body:"
+            cat /tmp/slack_response.txt
+          fi
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "ERROR: Slack webhook returned $HTTP_CODE"
+            exit 1
+          fi
