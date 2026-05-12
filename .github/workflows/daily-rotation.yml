@@ -2,10 +2,12 @@ name: Daily +1 Reviewer Rotation
 
 on:
   schedule:
-    # Fire at both 13:00 and 14:00 UTC Mon-Fri so we cover 9am Eastern
-    # year-round (13:00 UTC = 9am EDT, 14:00 UTC = 9am EST). The guard step
-    # below skips whichever fire is NOT actually 9am in America/New_York.
-    - cron: "0 13,14 * * 1-5"
+    # Fire at 13:07 and 14:07 UTC Mon-Fri so we cover 9am Eastern
+    # year-round (13:00 UTC = 9am EDT, 14:00 UTC = 9am EST). Off-minute (07)
+    # avoids GitHub Actions' top-of-hour congestion which otherwise delays
+    # scheduled fires by 30+ min. The guard step below skips whichever fire
+    # is NOT 9am in America/New_York.
+    - cron: "7 13,14 * * 1-5"
   workflow_dispatch: {}
 
 permissions:
@@ -24,11 +26,17 @@ jobs:
             echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
           fi
           ET_HOUR=$(TZ=America/New_York date +%H)
+          # Allow 09 (on-time) and 10 (the second cron's complement during
+          # the wrong-DST half of the year). On EDT we want :07 of 13 UTC = 9:07am ET
+          # → ET_HOUR=09 fires; the 14 UTC fire = 10:07am ET → ET_HOUR=10 skips.
+          # On EST we want :07 of 14 UTC = 9:07am ET → ET_HOUR=09 fires; the 13 UTC
+          # fire = 8:07am ET → ET_HOUR=08 skips. Only ET_HOUR=09 should run.
           if [ "$ET_HOUR" = "09" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "It's 9am ET (hour=$ET_HOUR), running."
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "Off-hour fire ($ET_HOUR ET); skipping downstream steps."
+            echo "Off-hour fire (ET hour=$ET_HOUR); skipping downstream steps."
           fi
 
       - name: Compute today's +1
