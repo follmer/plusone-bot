@@ -1,13 +1,13 @@
 name: Daily +1 Reviewer Rotation
 
 on:
-  schedule:
-    # Fire at 13:07 and 14:07 UTC Mon-Fri so we cover 9am Eastern
-    # year-round (13:00 UTC = 9am EDT, 14:00 UTC = 9am EST). Off-minute (07)
-    # avoids GitHub Actions' top-of-hour congestion which otherwise delays
-    # scheduled fires by 30+ min. The guard step below skips whichever fire
-    # is NOT 9am in America/New_York.
-    - cron: "7 13,14 * * 1-5"
+  # NOTE: The scheduled fire used to live here as `cron: "7 13,14 * * 1-5"`
+  # but GitHub Actions schedules on public repos with low activity proved
+  # unreliable (sometimes 2.5h late, sometimes skipped entirely). The daily
+  # fire is now driven by macOS launchd on Kyle's laptop:
+  #   ~/Library/LaunchAgents/com.follmer.plusone-bot.plist  +  ~/bin/plusone-bot.sh
+  # workflow_dispatch is preserved so the workflow can still be triggered
+  # manually from the GitHub UI / `gh workflow run` for ad-hoc tests.
   workflow_dispatch: {}
 
 permissions:
